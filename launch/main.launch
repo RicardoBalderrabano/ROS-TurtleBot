@@ -1,0 +1,55 @@
+<launch>
+  <include file="$(find test_zone)/launch/main.launch" />
+
+  <arg name="model" default="waffle"/>
+  <arg name="x" default="0.0"/>
+  <arg name="y" default="0.0"/>
+  <arg name="z" default="0.0"/>
+  <arg name="yaw" default="0.0"/>
+
+  <node name="rviz" pkg="rviz" type="rviz" args="-d $(find balderrabano_rodriguez)/one_tb3.rviz"/>
+
+  <arg name="Ts_robot" default="0.5" />
+  <arg name="increment" default="4" />
+  <arg name="min_distance" default="0.05" />
+
+  <param name="robot_description" command="$(find xacro)/xacro '$(find turtlebot3_description)/urdf/turtlebot3_$(arg model).urdf.xacro'" />
+
+  <node pkg="robot_state_publisher" type="robot_state_publisher" name="robot_state_publisher" output="screen">
+    <param name="publish_frequency" type="double" value="1.0" />
+  </node>
+
+  <node name="spawn_urdf" pkg="gazebo_ros" respawn="false" type="spawn_model"
+        args="-urdf -model tb3 -x $(arg x) -y $(arg y) -z $(arg z) -Y $(arg yaw) -param robot_description" />
+
+  <node name="map_odom_tf" pkg="tf" type="static_transform_publisher"
+        args="0 0 0.1 0 0 0 1 map odom 1"/>
+
+  <node name="map_server" pkg="map_server" type="map_server"
+        args="$(find balderrabano_rodriguez)/maps/map.yaml" />
+
+  <node name="global_planner" pkg="balderrabano_rodriguez" type="global_planner.py">
+    <param name="inflate_radius" type="double" value="0.1" />
+    <param name="increment" type="double" value="$(arg increment)" />
+    <param name="min_distance" type="double" value="$(arg min_distance)" />
+  </node>
+
+  <node name="local_planner" pkg="balderrabano_rodriguez" type="local_planner.py">
+    <param name="resolution" type="double" value="0.05" />
+    <param name="increment" type="double" value="$(arg increment)" />
+    <param name="min_distance" type="double" value="$(arg min_distance)" />
+    <param name="Ts_robot" type="double" value="$(arg Ts_robot)" />
+  </node>
+
+  <node name="goalPublisher" pkg="balderrabano_rodriguez" type="goalPublisher.py" output="screen">
+    <param name="min_distance" type="double" value="$(arg min_distance)" />
+    <param name="Ts_robot" type="double" value="$(arg Ts_robot)" />
+  </node>
+
+  <node name="controller" pkg="balderrabano_rodriguez" type="PID_controller.py" output="screen">
+    <param name="Ts_robot" type="double" value="$(arg Ts_robot)" />
+  </node>
+
+  <node pkg="balderrabano_rodriguez" type="metrics_logger.py" name="metrics_logger" output="screen"/>
+  <!--<node name="mapping" pkg="balderrabano_rodriguez" type="mapping.py"/>-->
+</launch>

@@ -1,0 +1,11 @@
+metrics:
+  mse: 11.483920683794537
+pid:
+  angular:
+    kd: 0.1
+    ki: 0.01
+    kp: 0.8
+  linear:
+    kd: 0.05
+    ki: 0.01
+    kp: 0.4

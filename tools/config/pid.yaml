@@ -1,0 +1,6 @@
+kd_angular: 0.1
+kd_linear: 0.05
+ki_angular: 0.01
+ki_linear: 0.01
+kp_angular: 0.8
+kp_linear: 0.4

@@ -1,0 +1,28 @@
+<launch>
+  <!-- Argument for dynamic config path -->
+  <arg name="config" default="$(find balderrabano_rodriguez)/config/pid.yaml" />
+
+  <!-- Load PID parameters -->
+  <rosparam file="$(arg config)" command="load" />
+
+  <!-- Controller node -->
+  <node pkg="balderrabano_rodriguez" type="PID_controller.py" name="controller" output="screen" />
+
+  <!-- Global planner -->
+  <node name="global_planner" pkg="balderrabano_rodriguez" type="global_planner.py">
+    <param name="inflate_radius" type="double" value="0.1" />
+    <param name="increment" type="double" value="4" />
+    <param name="min_distance" type="double" value="0.05" />
+  </node>
+
+  <!-- Local planner -->
+  <node name="local_planner" pkg="balderrabano_rodriguez" type="local_planner.py">
+    <param name="resolution" type="double" value="0.05" />
+    <param name="increment" type="double" value="4" />
+    <param name="min_distance" type="double" value="0.05" />
+    <param name="Ts_robot" type="double" value="0.5" />
+  </node>
+
+  <!-- Optional: tracking error logger -->
+  <node pkg="balderrabano_rodriguez" type="metrics_logger.py" name="metrics_logger" output="screen" />
+</launch>
