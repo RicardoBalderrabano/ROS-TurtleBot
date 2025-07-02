@@ -1,0 +1,21 @@
+# Compiled files
+*.pyc
+*.pyo
+__pycache__/
+
+
+build/
+devel/
+install/
+
+
+.vscode/
+.idea/
+
+
+*.log
+
+
+*.swp
+*.bak
+.DS_Store

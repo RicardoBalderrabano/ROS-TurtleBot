@@ -3,13 +3,12 @@
 import rospy
 import numpy as np
 from nav_msgs.msg import Path, Odometry
-from std_msgs.msg import Header, Bool
+from std_msgs.msg import Header, Bool, Float32
 from geometry_msgs.msg import PoseStamped
 import actionlib
 from balderrabano_rodriguez.msg import ControllerGoal, ControllerAction
 
 class LocalPlanner(object):
-
     def __init__(self, action_server_name, increment, resolution, min_distance):
         self.action_server_name = action_server_name
         self.client = actionlib.SimpleActionClient(action_server_name, ControllerAction)
@@ -18,6 +17,7 @@ class LocalPlanner(object):
         self.current_p = []               # Current position [x, y]
         self.current_path = []            # List of waypoints from global planner
         self.current_waypoint_idx = None  # Current waypoint index in path
+        self.current_goal = None          # Current goal sent to controller
 
         # Tuning parameters
         self.R = increment * resolution
@@ -28,6 +28,7 @@ class LocalPlanner(object):
         rospy.Subscriber("odom", Odometry, self.odom_callback)
         self.path_pub = rospy.Publisher("local_planner/path", Path, queue_size=2)
         self.goal_reached_pub = rospy.Publisher("/goal_reached", Bool, queue_size=1)
+        self.tracking_error_pub = rospy.Publisher("/tracking_error", Float32, queue_size=10)  # New publisher
 
     def path_callback(self, msg):
         """Callback when a new global path is published"""
@@ -40,6 +41,7 @@ class LocalPlanner(object):
             ]
             self.current_path.append(p)
         self.current_waypoint_idx = None
+        self.current_goal = None
 
     def publish_path(self, x):
         """Publish a path to visualize the local trajectory"""
@@ -67,6 +69,16 @@ class LocalPlanner(object):
         goal.target_point.x = point[0]
         goal.target_point.y = point[1]
         self.client.send_goal(goal)
+        self.current_goal = point  # Store the current goal point
+
+    def compute_tracking_error(self):
+        """Calculate distance to current controller goal"""
+        if self.current_goal is None or len(self.current_p) < 2:
+            return 0.0
+        
+        dx = self.current_goal[0] - self.current_p[0]
+        dy = self.current_goal[1] - self.current_p[1]
+        return np.sqrt(dx**2 + dy**2)
 
     def select_waypoint(self):
         """Main logic to decide the next waypoint and handle goal reached"""
@@ -81,6 +93,10 @@ class LocalPlanner(object):
             self.send_goal(path[0])
             return
 
+        # Publish tracking error for current goal
+        error = self.compute_tracking_error()
+        self.tracking_error_pub.publish(Float32(error))
+
         # Check if robot is close to the final goal
         idx_final = path.shape[0] - 1
         final_point = self.current_path[idx_final]
@@ -90,6 +106,7 @@ class LocalPlanner(object):
             self.goal_reached_pub.publish(Bool(data=True))
             self.current_path = []
             self.current_waypoint_idx = None
+            self.current_goal = None
             return
 
         # Select next local waypoint if within range
